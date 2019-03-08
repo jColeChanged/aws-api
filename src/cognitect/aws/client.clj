@@ -4,6 +4,7 @@
 (ns ^:skip-wiki cognitect.aws.client
   "Impl, don't call directly."
   (:require [clojure.core.async :as a]
+            [clojure.string :as str]
             [cognitect.http-client :as http]
             [cognitect.aws.util :as util]
             [cognitect.aws.interceptors :as interceptors]
@@ -55,9 +56,11 @@
     (try
       (let [{:keys [service region credentials endpoint http-client]} (-get-info client)
             {:keys [hostname]} endpoint
+            [hostname uri-prefix] (str/split hostname #"/" 2)
             http-request       (sign-http-request service region (credentials/fetch credentials)
                                                   (-> (build-http-request service op-map)
                                                       (assoc-in [:headers "host"] hostname)
+                                                      (update :uri #(if uri-prefix (str "/" uri-prefix %) %))
                                                       (assoc :server-name hostname)
                                                       ((partial interceptors/modify-http-request service op-map))))]
         (swap! result-meta assoc :http-request http-request)
